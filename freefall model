@@ -1,0 +1,124 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+
+def s(t,g,o,c,r,m):
+    p = 1.21
+    A = 4*np.pi*(r**2)
+    a = p*A/(2*m)
+    return (np.sqrt(g/(a*c))*((np.log(np.exp(-2*np.sqrt(a*c*g)*t)+1)/(np.sqrt(a*c*g)))+t)-np.sqrt(g/(a*c))*(np.log(2)/(np.sqrt(a*c*g))))+o
+
+def wrap(o_in,c_in,r_in,m_in):
+    def tempfunc(t, g, o=o_in, c=c_in, r=r_in, m=m_in):
+        return s(t, g, o, c, r, m) #can be used to fit g
+    return tempfunc
+def wrap2(c_in,r_in,m_in):
+    def tempfunc(t, g, o, c=c_in, r=r_in, m=m_in):
+        return s(t, g, o, c, r, m) #can be used in to fit both g and the offset
+    return tempfunc
+
+
+gravity = 9.81
+dragc = 0.47
+radius1 = 6.638*(10**-3)
+mass1 = 9.56*(10**-3)
+
+radius2 = 5.975*(10**-3)
+mass2 = 7.03*(10**-3)
+
+radius3 = 7.485*(10**-3)
+mass3 = 13.76*(10**-3)
+
+radius4 = 8.985*(10**-3)
+mass4 = 23.7*(10**-3)
+
+time = 0.55
+dpoints = 20
+
+yvals1, xvals1 = np.genfromtxt('../Data/9g.csv',dtype='float', delimiter=',', skip_header=True, unpack=True)
+yvals2, xvals2 = np.genfromtxt('../Data/7g.csv',dtype='float', delimiter=',', skip_header=True, unpack=True)
+yvals3, xvals3 = np.genfromtxt('../Data/13g.csv',dtype='float', delimiter=',', skip_header=True, unpack=True)
+yvals4, xvals4 = np.genfromtxt('../Data/23gyetmore.csv',dtype='float', delimiter=',', skip_header=True, unpack=True)
+
+guess = [9.81]
+guess2 = [9.81,0]
+offset1 = 0
+offset2 = 0
+offset3 = 0
+offset4 = 0
+
+parameters1, covariance1 = curve_fit(wrap(offset1,dragc, radius1, mass1), xvals1, yvals1, p0=guess, maxfev=5000)
+parameters2, covariance2 = curve_fit(wrap(offset2,dragc, radius2, mass2), xvals2, yvals2, p0=guess, maxfev=5000)
+parameters3, covariance3 = curve_fit(wrap2(dragc, radius3, mass3), xvals3, yvals3, p0=guess2, maxfev=5000)
+parameters4, covariance4 = curve_fit(wrap(offset4,dragc, radius4, mass4), xvals4, yvals4, p0=guess, maxfev=5000)
+
+
+fgravity1 = parameters1[0]
+fgravity2 = parameters2[0]
+fgravity3 = parameters3[0]
+fgravity4 = parameters4[0]
+offset3 = parameters3[1]
+
+
+print(fgravity1, covariance1[0])
+print(fgravity2, covariance2[0])
+print(fgravity3, covariance3[0])
+print(fgravity4, covariance4[0])
+
+errorx1 = np.zeros(23)
+errorx1 = errorx1 + 0.0001
+
+errorx2 = np.zeros(3)
+errorx2 = errorx2 + 0.001
+
+errorx = np.append(errorx1,errorx2)
+
+errory1 = np.zeros(23)
+errory1 = errorx1
+
+errory2 = np.zeros(3)
+errory2 = errory2 + 0.09
+errory = np.append(errory1,errory2)
+error = np.zeros(20)
+error = error + 0.005
+
+x = np.linspace(0,time,100)
+y1 = np.linspace(0,time,100)
+y2 = np.linspace(0,time,100)
+y3 = np.linspace(0,time,100)
+y4 = np.linspace(0,time,100)
+y5 = np.linspace(0,time,100)
+y6 = np.linspace(0,time,100)
+y7 = np.linspace(0,time,100)
+y8 = np.linspace(0,time,100)
+i = 0
+while i<100:
+    y1[i] = s(x[i],fgravity1,offset1,dragc,radius1,mass1)
+    y2[i] = s(x[i],fgravity2,offset2,dragc,radius2,mass2)
+    y3[i] = s(x[i],fgravity3,offset3,dragc,radius3,mass3)
+    y4[i] = s(x[i],fgravity4, offset4,dragc,radius4,mass4)
+    y5[i] = 0.5*gravity*(x[i]**2)
+    y6[i] = s(x[i], gravity, 0, dragc, radius2, mass2)
+    y7[i] = s(x[i], gravity, 0, dragc, radius3, mass3)
+    y8[i] = s(x[i], gravity, 0, dragc, radius4, mass4)
+    i = i + 1
+
+plt.figure(1, figsize=(8,6))
+#plt.plot(xvals1, yvals1, 'x', color='black')
+#plt.plot(xvals2, yvals2, 'x', color='blue')
+#.plot(xvals3, yvals3, 'x', color='red')
+#plt.plot(xvals4, yvals4, 'x', color='black')
+#plt.errorbar(xvals4,yvals4, xerr = 0, yerr = errory, color='black',ecolor='black',capsize=5, fmt='x')
+plt.errorbar(xvals3,yvals3, xerr = 0, yerr = error, color='black',ecolor='black',capsize=5, fmt='x')
+#.plot(x, y1, '-', color='black')
+#plt.plot(x, y2, '-', color='blue')
+#plt.plot(x, y3, '-', color='red')
+plt.plot(x, y3, '-', color='black', label='Data fit')
+plt.plot(x,y5,'--',color='red', label='Ideal curve')
+plt.plot(x,y7,'--',color='black', label='theoretical fit')
+plt.legend()
+plt.ylabel("Distance/ m")
+plt.xlabel("time/ s")
+plt.rcParams.update({'font.size': 18})
+plt.savefig('freefallgraph', bbox_inches = 'tight')

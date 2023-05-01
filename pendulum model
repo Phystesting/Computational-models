@@ -1,0 +1,95 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+def fit(x,a,b,c,d):
+    return (a*x*x*x)+(b*x*x)+(c*x)+d
+
+def COM(M1,R1,M2,R2,M3,R3):
+    return ((M1*R1)+(M2*R2)+(M3*R3))/(M1+M2+M3) #function to find the positon of the center of mass of the pendulum
+
+def Inertia(M,L,M1,R1,M2,R2,A):
+    return ((1/3)*(M/L)*((L-A)**3)-(A**3))+(M1*R1*R1)+((1/2)*M1*(0.1**2))+(M2*R2*R2)+((1/2)*M2*(0.1**2)) #found from the integral form of the inertia equation dI = r**2 dm
+
+def period(M1,R1,M2,R2,M3,R3,k1,k2,reverse):
+    center = COM(M1,0.5*R1,M2,R2,M3,R3)
+    g = 9.81
+    mtot = M1 + M2 + M3
+    if reverse == False:
+        d = abs(center - k1)
+        r2 = R2 - k1
+        r3 = R3 - k1
+        s = k1
+        I = Inertia(M1,R1,M2,r2,M3,r3,s)
+        return 2*np.pi*np.sqrt(I/(g*mtot*d))
+    if reverse == True:
+       d = abs(k2 - center)
+       r2 = k2 - R2
+       r3 = k2 - R3
+       s = L-k2
+       I = Inertia(M1,R1,M2,r2,M3,r3,s) 
+       return 2*np.pi*np.sqrt(I/(g*mtot*d))
+
+x,T1,T2 = np.genfromtxt('pendulum.csv',delimiter=',',unpack=True)
+
+k1 = 0.33 #position of knife edge
+k2 = 1.324 #
+M = 1.58
+L = 1.68
+M1 = 1.4
+M2 = 1
+R2 = 0.08
+R1 = np.arange(k1+0.17,k2-0.12,0.01)
+T1_theory = period(M,L,M1,R1,M2,R2,k1,k2,False)
+T2_theory = period(M,L,M1,R1,M2,R2,k1,k2,True)
+
+
+popt1, pcov1 = curve_fit(fit, x, T1)
+popt2, pcov2 = curve_fit(fit, x, T2)
+
+a1 = popt1[0]
+b1 = popt1[1]
+c1 = popt1[2]
+d1 = popt1[3]
+a2 = popt2[0]
+b2 = popt2[1]
+c2 = popt2[2]
+d2 = popt2[3]
+
+a = a1-a2
+b = b1-b2
+c = c1-c2
+d = d1-d2
+
+
+
+x_fit = np.arange(min(x),max(x),0.0001)
+y_fit1 = fit(x_fit,a1,b1,c1,d1)
+y_fit2 = fit(x_fit,a2,b2,c2,d2)
+
+
+#print(a1,b1,c1,d1)
+#print(a2,b2,c2,d2)
+print(a,b,c,d)
+
+
+
+plt.plot(x,T1,'.',color='black',label='Knife edge 1')
+plt.plot(x,T2,'.',color='red',label='Knife edge 2')
+plt.plot(x_fit,y_fit1,'-',color='black',label='data fit')
+plt.plot(x_fit,y_fit2,'-',color='red')
+plt.errorbar(x,T1,yerr=0.006,fmt ='.',ecolor='black',capsize=3,color='black')
+plt.errorbar(x,T2,yerr=0.006,fmt ='.',ecolor='red',capsize=3,color='red')
+
+
+
+
+
+
+plt.plot(R1-k1,T1_theory+0.025,'--',color='black',label='theoretical fit')
+plt.plot(R1-k1,T2_theory+0.025,'--',color='red')
+plt.xlabel('$R_2$ / m')
+plt.ylabel('Period / s')
+plt.rcParams.update({'font.size': 14})
+plt.legend()
+plt.savefig('kater', bbox_inches = 'tight')
